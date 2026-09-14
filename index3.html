@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>ApexMaps 3D - Pro Navigatsiya</title>
+
+  <!-- MapLibre GL CSS -->
+  <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+  <!-- FontAwesome Ikonkalar -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    html, body, #map {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #0f172a;
+    }
+
+    #app {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    /* Floating Search Panel (Google Maps stili) */
+    .search-panel {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      z-index: 10;
+      width: 380px;
+      max-width: calc(100vw - 32px);
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .search-bar {
+      display: flex;
+      align-items: center;
+      padding: 8px 14px;
+      gap: 10px;
+      height: 48px;
+    }
+
+    .search-bar input {
+      border: none;
+      outline: none;
+      width: 100%;
+      font-size: 0.95rem;
+      color: #1e293b;
+    }
+
+    .search-bar button {
+      background: none;
+      border: none;
+      color: #64748b;
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 6px;
+      border-radius: 50%;
+      transition: background 0.2s;
+    }
+
+    .search-bar button:hover {
+      background: #f1f5f9;
+      color: #2563eb;
+    }
+
+    /* Auto-complete Natijalari */
+    .search-results {
+      max-height: 250px;
+      overflow-y: auto;
+      border-top: 1px solid #f1f5f9;
+      display: none;
+    }
+
+    .search-results .item {
+      padding: 10px 16px;
+      font-size: 0.85rem;
+      color: #334155;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid #f8fafc;
+    }
+
+    .search-results .item:hover {
+      background: #eff6ff;
+      color: #2563eb;
+    }
+
+    /* Quick Category Chips */
+    .category-chips {
+      display: flex;
+      gap: 8px;
+      padding: 8px 12px;
+      overflow-x: auto;
+      background: #f8fafc;
+      border-top: 1px solid #f1f5f9;
+    }
+
+    .chip {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #475569;
+      white-space: nowrap;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .chip:hover {
+      border-color: #2563eb;
+      color: #2563eb;
+      background: #eff6ff;
+    }
+
+    /* Route Panel (Yo'nalish paneli) */
+    .route-panel {
+      display: none;
+      padding: 14px;
+      background: #ffffff;
+      border-top: 1px solid #e2e8f0;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .route-input-group {
+      display: flex;
+      align-items: center;
+      background: #f1f5f9;
+      padding: 6px 10px;
+      border-radius: 8px;
+      gap: 8px;
+    }
+
+    .route-input-group input {
+      border: none;
+      outline: none;
+      background: transparent;
+      width: 100%;
+      font-size: 0.85rem;
+    }
+
+    .route-modes {
+      display: flex;
+      gap: 6px;
+    }
+
+    .mode-btn {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      color: #475569;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .mode-btn.active {
+      background: #2563eb;
+      color: #fff;
+      border-color: #2563eb;
+    }
+
+    .route-info {
+      font-size: 0.85rem;
+      color: #1e293b;
+      background: #eff6ff;
+      padding: 8px;
+      border-radius: 6px;
+      display: none;
+      justify-content: space-between;
+      font-weight: 600;
+    }
+
+    /* Right Controls Stack */
+    .map-controls {
+      position: absolute;
+      right: 16px;
+      bottom: 30px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .control-btn {
+      width: 44px;
+      height: 44px;
+      background: #ffffff;
+      border: none;
+      border-radius: 50%;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      color: #334155;
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .control-btn:hover {
+      background: #f8fafc;
+      color: #2563eb;
+      transform: scale(1.05);
+    }
+
+    .control-btn.active {
+      background: #2563eb;
+      color: #ffffff;
+    }
+
+    /* Layer Selector Card */
+    .layers-card {
+      position: absolute;
+      right: 70px;
+      bottom: 90px;
+      z-index: 10;
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      width: 160px;
+    }
+
+    .layer-opt {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: #334155;
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 6px;
+    }
+
+    .layer-opt:hover {
+      background: #f1f5f9;
+    }
+
+    /* Bottom Info Card */
+    .place-card {
+      position: absolute;
+      bottom: 20px;
+      left: 16px;
+      z-index: 10;
+      width: 380px;
+      max-width: calc(100vw - 32px);
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .place-card .title {
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: #0f172a;
+    }
+
+    .place-card .subtitle {
+      font-size: 0.8rem;
+      color: #64748b;
+    }
+
+    .place-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .action-btn {
+      flex: 1;
+      padding: 8px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .action-btn.primary { background: #2563eb; color: white; }
+    .action-btn.secondary { background: #f1f5f9; color: #334155; }
+
+    /* Toast */
+    .toast {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #0f172a;
+      color: white;
+      padding: 8px 18px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      z-index: 100;
+      display: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+  </style>
+</head>
+<body>
+
+  <div id="app">
+    <!-- Qidiruv va Yo'nalish Paneli -->
+    <div class="search-panel">
+      <div class="search-bar">
+        <i class="fa-solid fa-location-dot" style="color: #2563eb;"></i>
+        <input type="text" id="search-input" placeholder="Google Maps'da qidirish..." />
+        <button id="search-btn" title="Qidirish"><i class="fa-solid fa-magnifying-glass"></i></button>
+        <button id="toggle-route-btn" title="Yo'nalish olish"><i class="fa-solid fa-route"></i></button>
+      </div>
+
+      <!-- Qidiruv takliflari -->
+      <div id="search-results" class="search-results"></div>
+
+      <!-- Tezkor Kategoriyalar -->
+      <div class="category-chips">
+        <div class="chip" onclick="searchCategory('restaurant')"><i class="fa-solid fa-utensils"></i> Restoranlar</div>
+        <div class="chip" onclick="searchCategory('cafe')"><i class="fa-solid fa-mug-hot"></i> Kafelar</div>
+        <div class="chip" onclick="searchCategory('fuel')"><i class="fa-solid fa-gas-station"></i> Zapravkalar</div>
+        <div class="chip" onclick="searchCategory('hospital')"><i class="fa-solid fa-hospital"></i> Shifoxonalar</div>
+        <div class="chip" onclick="searchCategory('hotel')"><i class="fa-solid fa-bed"></i> Mehmonxonalar</div>
+      </div>
+
+      <!-- Yo'nalish oynasi -->
+      <div id="route-panel" class="route-panel">
+        <div class="route-input-group">
+          <i class="fa-solid fa-circle-dot" style="color:#10b981;"></i>
+          <input type="text" id="route-from" placeholder="Boshlang'ich nuqta..." />
+          <i class="fa-solid fa-crosshairs" id="set-my-start" style="cursor:pointer;" title="Mening joylashuvim"></i>
+        </div>
+        <div class="route-input-group">
+          <i class="fa-solid fa-location-dot" style="color:#ef4444;"></i>
+          <input type="text" id="route-to" placeholder="Boriladigan joy..." />
+        </div>
+        <div class="route-modes">
+          <button class="mode-btn active" data-mode="driving"><i class="fa-solid fa-car"></i> Mashina</button>
+          <button class="mode-btn" data-mode="walking"><i class="fa-solid fa-person-walking"></i> Piyoda</button>
+          <button class="mode-btn" data-mode="bicycling"><i class="fa-solid fa-bicycle"></i> Velosiped</button>
+        </div>
+        <button class="action-btn primary" id="calc-route-btn"><i class="fa-solid fa-directions"></i> Yo'nalishni ko'rsat</button>
+        <div id="route-info" class="route-info">
+          <span id="route-dist">- km</span>
+          <span id="route-time">- min</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- O'ng tomondagi 3D va Xarita boshqaruv tugmalari -->
+    <div class="map-controls">
+      <button class="control-btn" id="btn-3d" title="3D ko'rinish va Relyef"><i class="fa-solid fa-cube"></i></button>
+      <button class="control-btn" id="btn-compass" title="Shimolga qaratish"><i class="fa-solid fa-compass"></i></button>
+      <button class="control-btn" id="btn-locate" title="Mening joylashuvim"><i class="fa-solid fa-location-crosshairs"></i></button>
+      <button class="control-btn" id="btn-layers" title="Qatlamlar"><i class="fa-solid fa-layer-group"></i></button>
+    </div>
+
+    <!-- Qatlam tanlash oynasi -->
+    <div id="layers-card" class="layers-card">
+      <div class="layer-opt" onclick="setBaseLayer('vector')">
+        <i class="fa-solid fa-map"></i> Vektor 3D (Standard)
+      </div>
+      <div class="layer-opt" onclick="setBaseLayer('topo')">
+        <i class="fa-solid fa-mountain"></i> Topo (Relyefli)
+      </div>
+    </div>
+
+    <!-- Tanlangan joy haqida Info Karta -->
+    <div id="place-card" class="place-card">
+      <div class="title" id="place-title">Obyekt nomi</div>
+      <div class="subtitle" id="place-sub">Koordinatalari va manzili</div>
+      <div class="place-actions">
+        <button class="action-btn primary" id="btn-route-here"><i class="fa-solid fa-route"></i> Bu yerga yo'nalish</button>
+        <button class="action-btn secondary" id="btn-copy-coords"><i class="fa-solid fa-copy"></i> Nusxalash</button>
+      </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <!-- Xarita Konteyneri -->
+    <div id="map"></div>
+  </div>
+
+  <!-- MapLibre GL JS -->
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+
+  <script>
+    // System State
+    let map;
+    let userLocation = null;
+    let startCoords = null;
+    let endCoords = null;
+    let selectedCoords = null;
+    let currentMarker = null;
+    let travelMode = 'driving';
+    let is3DActive = false;
+
+    // Map Initialization
+    document.addEventListener('DOMContentLoaded', () => {
+      initMap();
+      setupEvents();
+    });
+
+    function initMap() {
+      // Free Vector Style + 3D Building support
+      map = new maplibregl.Map({
+        container: 'map',
+        style: {
+          version: 8,
+          sources: {
+            'osm-tiles': {
+              type: 'raster',
+              tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+              tileSize: 256,
+              attribution: '© OpenStreetMap'
+            },
+            'topo-tiles': {
+              type: 'raster',
+              tiles: ['https://tile.opentopomap.org/{z}/{x}/{y}.png'],
+              tileSize: 256
+            }
+          },
+          layers: [
+            {
+              id: 'osm-layer',
+              type: 'raster',
+              source: 'osm-tiles',
+              minzoom: 0,
+              maxzoom: 19
+            }
+          ]
+        },
+        center: [69.2401, 41.2995], // Toshkent
+        zoom: 13,
+        pitch: 0,
+        bearing: 0
+      });
+
+      map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
+
+      map.on('click', (e) => {
+        const { lng, lat } = e.lngLat;
+        setMarker([lng, lat], "Tanlangan nuqta", `${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+      });
+    }
+
+    function setupEvents() {
+      // 3D Pitch va Relyef Effect Toggle
+      document.getElementById('btn-3d').addEventListener('click', () => {
+        is3DActive = !is3DActive;
+        const btn = document.getElementById('btn-3d');
+
+        if (is3DActive) {
+          map.easeTo({ pitch: 60, bearing: -20, zoom: 16, duration: 1000 });
+          btn.classList.add('active');
+          showToast("3D ko'rinish faollashdi!");
+        } else {
+          map.easeTo({ pitch: 0, bearing: 0, zoom: 13, duration: 1000 });
+          btn.classList.remove('active');
+          showToast("2D ko'rinishga qaytildi.");
+        }
+      });
+
+      // Shimolga burish
+      document.getElementById('btn-compass').addEventListener('click', () => {
+        map.resetNorthPitch({ duration: 800 });
+      });
+
+      // Foydalanuvchi joylashuvi
+      document.getElementById('btn-locate').addEventListener('click', getUserLocation);
+
+      // Qatlamlar oynasi
+      document.getElementById('btn-layers').addEventListener('click', () => {
+        const card = document.getElementById('layers-card');
+        card.style.display = card.style.display === 'flex' ? 'none' : 'flex';
+      });
+
+      // Search box debounce
+      let timer;
+      document.getElementById('search-input').addEventListener('input', (e) => {
+        clearTimeout(timer);
+        const q = e.target.value.trim();
+        if (q.length > 2) {
+          timer = setTimeout(() => searchPlaces(q), 400);
+        } else {
+          document.getElementById('search-results').style.display = 'none';
+        }
+      });
+
+      document.getElementById('search-btn').addEventListener('click', () => {
+        const q = document.getElementById('search-input').value.trim();
+        if (q) searchPlaces(q);
+      });
+
+      // Yo'nalish panelini ochish/yopish
+      document.getElementById('toggle-route-btn').addEventListener('click', () => {
+        const panel = document.getElementById('route-panel');
+        panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
+      });
+
+      // Transport rejimini tanlash
+      document.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+          const target = e.currentTarget;
+          target.classList.add('active');
+          travelMode = target.dataset.mode;
+        });
+      });
+
+      // Boshlang'ich joyni geolokatsiyadan olish
+      document.getElementById('set-my-start').addEventListener('click', () => {
+        if (userLocation) {
+          startCoords = userLocation;
+          document.getElementById('route-from').value = "Mening joylashuvim";
+          showToast("Boshlang'ich nuqta belgilandi.");
+        } else {
+          getUserLocation(() => {
+            startCoords = userLocation;
+            document.getElementById('route-from').value = "Mening joylashuvim";
+          });
+        }
+      });
+
+      document.getElementById('calc-route-btn').addEventListener('click', calculateRoute);
+
+      // Info card tugmalari
+      document.getElementById('btn-copy-coords').addEventListener('click', () => {
+        if (selectedCoords) {
+          navigator.clipboard.writeText(`${selectedCoords[1]}, ${selectedCoords[0]}`);
+          showToast("Koordinatalar nusxalandi!");
+        }
+      });
+
+      document.getElementById('btn-route-here').addEventListener('click', () => {
+        if (selectedCoords) {
+          endCoords = selectedCoords;
+          document.getElementById('route-to').value = document.getElementById('place-title').textContent;
+          document.getElementById('route-panel').style.display = 'flex';
+          showToast("Yakuniy nuqta tanlandi. Yo'nalishni hisoblang!");
+        }
+      });
+    }
+
+    // Nominatim Search Engine
+    async function searchPlaces(query) {
+      const resultsDiv = document.getElementById('search-results');
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`);
+        const data = await res.json();
+
+        resultsDiv.innerHTML = '';
+        if (data.length === 0) {
+          resultsDiv.style.display = 'none';
+          return;
+        }
+
+        data.forEach(item => {
+          const div = document.createElement('div');
+          div.className = 'item';
+          div.innerHTML = `<i class="fa-solid fa-location-dot"></i> <span>${item.display_name}</span>`;
+          div.onclick = () => {
+            const coords = [parseFloat(item.lon), parseFloat(item.lat)];
+            setMarker(coords, item.display_name.split(',')[0], item.display_name);
+            map.flyTo({ center: coords, zoom: 15 });
+            resultsDiv.style.display = 'none';
+          };
+          resultsDiv.appendChild(div);
+        });
+
+        resultsDiv.style.display = 'block';
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function searchCategory(cat) {
+      const bounds = map.getBounds();
+      const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
+      searchPlaces(`${cat} near ${bbox}`);
+      showToast(`${cat} bo'yicha qidirilmoqda...`);
+    }
+
+    // Geolokatsiya
+    function getUserLocation(cb) {
+      if (!navigator.geolocation) {
+        showToast("Geolokatsiya mavjud emas.");
+        return;
+      }
+      showToast("Joylashuv aniqlanmoqda...");
+      navigator.geolocation.getCurrentPosition(pos => {
+        userLocation = [pos.coords.longitude, pos.coords.latitude];
+        map.flyTo({ center: userLocation, zoom: 16 });
+        setMarker(userLocation, "Siz shu yerdasiz", "Aniq joylashuv");
+        if (cb) cb();
+      }, () => {
+        showToast("Joylashuvni aniqlashda xatolik.");
+      });
+    }
+
+    // Marker qo'yish va Info Card ko'rsatish
+    function setMarker(coords, title, subtitle) {
+      selectedCoords = coords;
+      if (currentMarker) currentMarker.remove();
+
+      const el = document.createElement('div');
+      el.className = 'custom-marker';
+      el.innerHTML = `<i class="fa-solid fa-location-dot" style="font-size:32px; color:#ef4444; filter:drop-shadow(0 4px 6px rgba(0,0,0,0.3));"></i>`;
+
+      currentMarker = new maplibregl.Marker({ element: el })
+        .setLngLat(coords)
+        .addTo(map);
+
+      document.getElementById('place-title').textContent = title;
+      document.getElementById('place-sub').textContent = subtitle;
+      document.getElementById('place-card').style.display = 'flex';
+    }
+
+    // OSRM Routing Engine
+    async function calculateRoute() {
+      if (!startCoords || !endCoords) {
+        showToast("Boshlang'ich va yakuniy nuqtani belgilang!");
+        return;
+      }
+
+      showToast("Yo'nalish hisoblanmoqda...");
+
+      const modeMap = { driving: 'driving', walking: 'walking', bicycling: 'bike' };
+      const profile = modeMap[travelMode] || 'driving';
+      const url = `https://router.project-osrm.org/route/v1/${profile}/${startCoords[0]},${startCoords[1]};${endCoords[0]},${endCoords[1]}?overview=full&geometries=geojson`;
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (!data.routes || data.routes.length === 0) {
+          showToast("Yo'nalish topilmadi.");
+          return;
+        }
+
+        const route = data.routes[0];
+        const geojson = {
+          type: 'Feature',
+          geometry: route.geometry
+        };
+
+        if (map.getSource('route')) {
+          map.getSource('route').setData(geojson);
+        } else {
+          map.addSource('route', {
+            type: 'geojson',
+            data: geojson
+          });
+
+          map.addLayer({
+            id: 'route-line',
+            type: 'line',
+            source: 'route',
+            layout: { 'line-join': 'round', 'line-cap': 'round' },
+            paint: {
+              'line-color': '#2563eb',
+              'line-width': 6,
+              'line-opacity': 0.8
+            }
+          });
+        }
+
+        // Fit bounds
+        const coordinates = route.geometry.coordinates;
+        const bounds = coordinates.reduce((b, coord) => b.extend(coord), new maplibregl.LngLatBounds(coordinates[0], coordinates[0]));
+        map.fitBounds(bounds, { padding: 60 });
+
+        // Information update
+        document.getElementById('route-dist').textContent = `${(route.distance / 1000).toFixed(1)} km`;
+        document.getElementById('route-time').textContent = `${Math.round(route.duration / 60)} min`;
+        document.getElementById('route-info').style.display = 'flex';
+
+      } catch (err) {
+        showToast("Yo'nalish qurishda xatolik yuz berdi.");
+      }
+    }
+
+    // Qatlam almashtirish (Vektor / Topo Relyef)
+    function setBaseLayer(type) {
+      if (type === 'topo') {
+        if (!map.getLayer('topo-layer')) {
+          map.addLayer({
+            id: 'topo-layer',
+            type: 'raster',
+            source: 'topo-tiles'
+          });
+        } else {
+          map.setLayoutProperty('topo-layer', 'visibility', 'visible');
+        }
+        showToast("Topo Relyef qatlami faollashdi.");
+      } else {
+        if (map.getLayer('topo-layer')) {
+          map.setLayoutProperty('topo-layer', 'visibility', 'none');
+        }
+        showToast("Vektor qatlamga o'tildi.");
+      }
+      document.getElementById('layers-card').style.display = 'none';
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 3000);
+    }
+  </script>
+</body>
+</html>

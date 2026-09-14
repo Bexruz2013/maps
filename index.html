@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>ApexMaps | Interaktiv Navigatsiya</title>
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <!-- Font Awesome Ikonkalari -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  
+  <style>
+    /* ==========================================================================
+       CSS O'zgaruvchilar va Mavzular (Light/Dark)
+       ========================================================================== */
+    :root {
+      --bg-primary: #ffffff;
+      --bg-secondary: #f8f9fa;
+      --bg-tertiary: #edf2f7;
+      --text-primary: #1a202c;
+      --text-secondary: #4a5568;
+      --text-muted: #a0aec0;
+      --accent-color: #2563eb;
+      --accent-hover: #1d4ed8;
+      --accent-light: #eff6ff;
+      --border-color: #e2e8f0;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
+      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 18px;
+      --sidebar-width: 380px;
+      --transition-speed: 0.25s;
+    }
+
+    body.dark-theme {
+      --bg-primary: #0f172a;
+      --bg-secondary: #1e293b;
+      --bg-tertiary: #334155;
+      --text-primary: #f8fafc;
+      --text-secondary: #cbd5e1;
+      --text-muted: #64748b;
+      --accent-color: #3b82f6;
+      --accent-hover: #60a5fa;
+      --accent-light: #1e3a8a;
+      --border-color: #334155;
+    }
+
+    /* Dark Mode Xarita Ranglarini Invert Qilish */
+    body.dark-theme .leaflet-tile-pane {
+      filter: brightness(0.7) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
+    }
+
+    /* ==========================================================================
+       Umumiy Stillar
+       ========================================================================== */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+    }
+
+    #app-container {
+      display: flex;
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+
+    /* ==========================================================================
+       Sidebar (Chap Panel) Stili
+       ========================================================================== */
+    .sidebar {
+      width: var(--sidebar-width);
+      height: 100%;
+      background-color: var(--bg-primary);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      z-index: 1000;
+      box-shadow: var(--shadow-md);
+      transition: transform var(--transition-speed) ease;
+    }
+
+    .sidebar-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border-color);
+      position: relative;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      color: var(--accent-color);
+    }
+
+    .brand-icon { font-size: 1.5rem; }
+    .brand-name { font-size: 1.25rem; font-weight: 700; color: var(--text-primary); }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      background-color: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+      gap: 10px;
+    }
+
+    .search-box input {
+      border: none;
+      outline: none;
+      background: transparent;
+      width: 100%;
+      color: var(--text-primary);
+      font-size: 0.95rem;
+    }
+
+    .suggestions-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 16px;
+      right: 16px;
+      background-color: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg);
+      max-height: 250px;
+      overflow-y: auto;
+      z-index: 1001;
+      list-style: none;
+    }
+
+    .suggestions-dropdown li {
+      padding: 12px 14px;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 0.9rem;
+    }
+
+    .suggestions-dropdown li:hover {
+      background-color: var(--bg-secondary);
+    }
+
+    /* Tabs */
+    .sidebar-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border-color);
+      background-color: var(--bg-secondary);
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 12px 8px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .tab-btn.active {
+      color: var(--accent-color);
+      background-color: var(--bg-primary);
+      border-bottom: 2px solid var(--accent-color);
+    }
+
+    .sidebar-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .section-block { margin-bottom: 20px; }
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .section-title { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 8px; }
+
+    /* Categories Grid */
+    .categories-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .category-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 4px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      background-color: var(--bg-secondary);
+      color: var(--text-secondary);
+      font-size: 0.75rem;
+      cursor: pointer;
+      gap: 6px;
+    }
+
+    .category-btn i { font-size: 1.1rem; color: var(--accent-color); }
+    .category-btn:hover { background-color: var(--bg-tertiary); }
+
+    /* Card Item */
+    .item-list { list-style: none; }
+
+    .card-item {
+      padding: 12px;
+      background-color: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+
+    .card-item:hover { background-color: var(--bg-tertiary); }
+    .card-title { font-weight: 600; font-size: 0.95rem; color: var(--text-primary); margin-bottom: 4px; }
+    .card-subtitle { font-size: 0.8rem; color: var(--text-secondary); }
+
+    /* Directions Panel Stili */
+    .directions-inputs { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+    .input-group { display: flex; align-items: center; background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 8px 12px; gap: 10px; }
+    .input-group input { border: none; outline: none; background: transparent; width: 100%; color: var(--text-primary); }
+    .start-icon { color: #10b981; }
+    .end-icon { color: #ef4444; }
+
+    .mode-selector { display: flex; gap: 8px; margin-bottom: 16px; }
+    .mode-btn { flex: 1; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background-color: var(--bg-secondary); color: var(--text-secondary); cursor: pointer; }
+    .mode-btn.active { background-color: var(--accent-color); color: white; border-color: var(--accent-color); }
+
+    .route-summary { margin-top: 16px; padding: 14px; background-color: var(--accent-light); border-radius: var(--radius-md); }
+    .summary-metrics { display: flex; justify-content: space-around; margin-bottom: 12px; }
+    .metric { display: flex; flex-direction: column; align-items: center; }
+    .metric .label { font-size: 0.75rem; color: var(--text-secondary); }
+    .metric .value { font-size: 1.2rem; font-weight: 700; color: var(--accent-color); }
+
+    /* Buttons */
+    .primary-btn { background-color: var(--accent-color); color: white; border: none; padding: 12px 16px; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; }
+    .secondary-btn { background-color: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-color); padding: 10px 12px; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; }
+    .text-btn { background: none; border: none; color: var(--accent-color); font-size: 0.8rem; cursor: pointer; }
+    .full-width { width: 100%; }
+    .icon-btn, .icon-btn-sm { background: none; border: none; color: var(--text-muted); cursor: pointer; }
+
+    /* ==========================================================================
+       Xarita va Floating Tugmalar
+       ========================================================================== */
+    #map-container { flex: 1; height: 100%; position: relative; }
+    #map { width: 100%; height: 100%; }
+
+    .map-controls { position: absolute; right: 16px; top: 16px; z-index: 999; display: flex; flex-direction: column; gap: 8px; }
+    .map-btn { width: 42px; height: 42px; background-color: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 50%; box-shadow: var(--shadow-md); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .map-btn:hover { background-color: var(--bg-secondary); }
+
+    .layer-selector-card { position: absolute; right: 68px; top: 140px; z-index: 999; background-color: var(--bg-primary); border: 1px solid var(--border-color); padding: 14px; border-radius: var(--radius-md); box-shadow: var(--shadow-lg); display: flex; flex-direction: column; gap: 10px; font-size: 0.85rem; }
+
+    /* Details Panel */
+    .details-panel { position: absolute; bottom: 24px; left: calc(var(--sidebar-width) + 24px); right: 24px; max-width: 480px; background-color: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 18px; box-shadow: var(--shadow-lg); z-index: 1000; }
+    .close-btn { position: absolute; top: 12px; right: 16px; background: none; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer; }
+    .badge { font-size: 0.75rem; background-color: var(--accent-light); color: var(--accent-color); padding: 3px 10px; border-radius: 12px; font-weight: 600; text-transform: capitalize; }
+    .address-text { font-size: 0.85rem; color: var(--text-secondary); margin-top: 6px; }
+    .details-body { margin-top: 14px; display: flex; flex-direction: column; gap: 12px; }
+    .detail-row { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-muted); }
+    .details-actions { display: flex; gap: 10px; }
+    .action-btn { flex: 1; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-weight: 600; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .action-btn.primary { background-color: var(--accent-color); color: white; border-color: var(--accent-color); }
+    .action-btn.secondary { background-color: var(--bg-secondary); color: var(--text-primary); }
+
+    .toggle-sidebar-btn { display: none; position: absolute; top: 16px; left: 16px; z-index: 1001; width: 42px; height: 42px; background-color: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 50%; box-shadow: var(--shadow-md); align-items: center; justify-content: center; cursor: pointer; }
+
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background-color: #1e293b; color: white; padding: 10px 22px; border-radius: 30px; font-size: 0.85rem; box-shadow: var(--shadow-lg); z-index: 2000; }
+    .hidden { display: none !important; }
+
+    .spinner { width: 24px; height: 24px; border: 3px solid var(--border-color); border-top-color: var(--accent-color); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 12px auto; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Responsive Adaptsiya */
+    @media (max-width: 768px) {
+      .toggle-sidebar-btn { display: flex; }
+      .sidebar { position: absolute; top: 0; left: 0; height: 100%; transform: translateX(-100%); width: 85%; max-width: 320px; }
+      .sidebar.open { transform: translateX(0); }
+      .details-panel { left: 16px; right: 16px; bottom: 16px; }
+      .layer-selector-card { right: 16px; top: auto; bottom: 80px; }
+    }
+  </style>
+</head>
+<body class="light-theme">
+
+  <div id="app-container">
+
+    <!-- Chap Panel (Sidebar) -->
+    <aside id="sidebar" class="sidebar">
+      <!-- Qidiruv paneli -->
+      <div class="sidebar-header">
+        <div class="brand">
+          <i class="fa-solid fa-compass brand-icon"></i>
+          <span class="brand-name">ApexMaps</span>
+        </div>
+        <div class="search-box">
+          <i class="fa-solid fa-magnifying-glass search-icon"></i>
+          <input type="text" id="search-input" placeholder="Shahar yoki joyni qidiring..." autocomplete="off" />
+          <button id="clear-search-btn" class="icon-btn hidden" title="Tozalash">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <!-- Avto-to'ldirish ro'yxati -->
+        <ul id="suggestions-list" class="suggestions-dropdown hidden"></ul>
+      </div>
+
+      <!-- Tab knopkalari -->
+      <nav class="sidebar-tabs">
+        <button class="tab-btn active" data-tab="explore">
+          <i class="fa-solid fa-compass"></i> Qidiruv
+        </button>
+        <button class="tab-btn" data-tab="directions" id="directions-tab-btn">
+          <i class="fa-solid fa-route"></i> Yo'nalish
+        </button>
+        <button class="tab-btn" data-tab="saved">
+          <i class="fa-solid fa-bookmark"></i> Saqlangan (<span id="saved-count">0</span>)
+        </button>
+      </nav>
+
+      <!-- Tab kontenti -->
+      <div class="sidebar-content">
+        
+        <!-- Tab 1: Qidiruv va Kategoriyalar -->
+        <section id="tab-explore" class="tab-panel active">
+          <div class="section-block">
+            <h4 class="section-title">Kategoriyalar</h4>
+            <div class="categories-grid">
+              <button class="category-btn" data-category="restaurant">
+                <i class="fa-solid fa-utensils"></i> Restoran
+              </button>
+              <button class="category-btn" data-category="cafe">
+                <i class="fa-solid fa-mug-hot"></i> Kafe
+              </button>
+              <button class="category-btn" data-category="hotel">
+                <i class="fa-solid fa-bed"></i> Mehmonxona
+              </button>
+              <button class="category-btn" data-category="hospital">
+                <i class="fa-solid fa-hospital"></i> Shifoxona
+              </button>
+              <button class="category-btn" data-category="fuel">
+                <i class="fa-solid fa-gas-station"></i> Zapravka
+              </button>
+              <button class="category-btn" data-category="supermarket">
+                <i class="fa-solid fa-cart-shopping"></i> Do'kon
+              </button>
+              <button class="category-btn" data-category="bank">
+                <i class="fa-solid fa-piggy-bank"></i> Bankomat
+              </button>
+              <button class="category-btn" data-category="park">
+                <i class="fa-solid fa-tree"></i> Park
+              </button>
+            </div>
+          </div>
+
+          <!-- Oxirgi qidiruvlar -->
+          <div class="section-block" id="recent-searches-container">
+            <div class="section-header">
+              <h4 class="section-title">Oxirgi qidiruvlar</h4>
+              <button id="clear-recent-btn" class="text-btn">Tozalash</button>
+            </div>
+            <ul id="recent-searches-list" class="item-list"></ul>
+          </div>
+
+          <!-- Natijalar ro'yxati -->
+          <div class="section-block" id="search-results-container">
+            <h4 class="section-title" id="results-title">Natijalar</h4>
+            <div id="loading-spinner" class="spinner hidden"></div>
+            <div id="search-results-list" class="item-list"></div>
+          </div>
+        </section>
+
+        <!-- Tab 2: Yo'nalish olish (Routing) -->
+        <section id="tab-directions" class="tab-panel">
+          <div class="directions-inputs">
+            <div class="input-group">
+              <i class="fa-solid fa-circle-dot start-icon"></i>
+              <input type="text" id="dir-from-input" placeholder="Boshlang'ich nuqta..." />
+              <button id="use-my-location-start" class="icon-btn-sm" title="Mening joylashuvim">
+                <i class="fa-solid fa-crosshairs"></i>
+              </button>
+            </div>
+            <div class="input-group">
+              <i class="fa-solid fa-location-dot end-icon"></i>
+              <input type="text" id="dir-to-input" placeholder="Boriladigan joy..." />
+            </div>
+          </div>
+
+          <!-- Transport turi -->
+          <div class="mode-selector">
+            <button class="mode-btn active" data-mode="driving" title="Moshina">
+              <i class="fa-solid fa-car"></i>
+            </button>
+            <button class="mode-btn" data-mode="walking" title="Piyoda">
+              <i class="fa-solid fa-person-walking"></i>
+            </button>
+            <button class="mode-btn" data-mode="bicycling" title="Velosiped">
+              <i class="fa-solid fa-bicycle"></i>
+            </button>
+          </div>
+
+          <button id="get-directions-btn" class="primary-btn full-width">
+            <i class="fa-solid fa-diamond-turn-right"></i> Yo'nalishni hisoblash
+          </button>
+
+          <!-- Yo'nalish natijasi -->
+          <div id="route-summary" class="route-summary hidden">
+            <div class="summary-metrics">
+              <div class="metric">
+                <span class="label">Masofa</span>
+                <span class="value" id="route-distance">-</span>
+              </div>
+              <div class="metric">
+                <span class="label">Vaqt</span>
+                <span class="value" id="route-duration">-</span>
+              </div>
+            </div>
+            <button id="clear-route-btn" class="secondary-btn full-width">Yo'nalishni o'chirish</button>
+          </div>
+        </section>
+
+        <!-- Tab 3: Saqlangan joylar -->
+        <section id="tab-saved" class="tab-panel">
+          <div id="saved-places-list" class="item-list"></div>
+        </section>
+
+      </div>
+    </aside>
+
+    <!-- Mobil menyuni ochish knopkasi -->
+    <button id="toggle-sidebar-btn" class="toggle-sidebar-btn" aria-label="Menu">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+
+    <!-- Xarita maydoni -->
+    <main id="map-container">
+      <div id="map"></div>
+
+      <!-- Xarita ustidagi knopkalar -->
+      <div class="map-controls">
+        <button id="zoom-in-btn" class="map-btn" title="Kattalashtirish"><i class="fa-solid fa-plus"></i></button>
+        <button id="zoom-out-btn" class="map-btn" title="Kichiklashtirish"><i class="fa-solid fa-minus"></i></button>
+        <button id="locate-btn" class="map-btn" title="Mening joylashuvim"><i class="fa-solid fa-crosshairs"></i></button>
+        <button id="layer-toggle-btn" class="map-btn" title="Xarita qatlami"><i class="fa-solid fa-layer-group"></i></button>
+        <button id="theme-toggle-btn" class="map-btn" title="Mavzu"><i class="fa-solid fa-moon"></i></button>
+        <button id="fullscreen-btn" class="map-btn" title="To'liq ekran"><i class="fa-solid fa-expand"></i></button>
+      </div>
+
+      <!-- Qatlam tanlash kartasi -->
+      <div id="layer-selector" class="layer-selector-card hidden">
+        <h4>Xarita turlari</h4>
+        <label><input type="radio" name="map-layer" value="street" checked /> Odatiy (Street)</label>
+        <label><input type="radio" name="map-layer" value="satellite" /> Sun'iy yo'ldosh (Esri)</label>
+        <label><input type="radio" name="map-layer" value="topo" /> Topografik</label>
+      </div>
+    </main>
+
+    <!-- Joy haqida ma'lumot paneli -->
+    <div id="details-panel" class="details-panel hidden">
+      <button id="close-details-btn" class="close-btn">&times;</button>
+      <div class="details-header">
+        <span id="details-category" class="badge">Joy</span>
+        <h2 id="details-title">Nomi</h2>
+        <p id="details-address" class="address-text">Manzili...</p>
+      </div>
+      <div class="details-body">
+        <div class="detail-row">
+          <i class="fa-solid fa-location-crosshairs"></i>
+          <span id="details-coords">0.0000, 0.0000</span>
+        </div>
+        <div class="details-actions">
+          <button id="details-directions-btn" class="action-btn primary">
+            <i class="fa-solid fa-route"></i> Yo'nalish
+          </button>
+          <button id="details-save-btn" class="action-btn secondary">
+            <i class="fa-solid fa-bookmark"></i> Saqlash
+          </button>
+          <button id="details-share-btn" class="action-btn secondary">
+            <i class="fa-solid fa-share-nodes"></i> Ulashish
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Xabar -->
+    <div id="toast" class="toast hidden"></div>
+
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nXCorig546dfcYDA265cdUlhWB5EGXE/D5DzA42F0=" crossorigin=""></script>
+  
+  <script>
+    /**
+     * ApexMaps - Asosiy JavaScript Mantig'i
+     */
+    const state = {
+      map: null,
+      activeLayer: null,
+      userLocation: null,
+      userMarker: null,
+      userAccuracyCircle: null,
+      searchMarkers: [],
+      routeLayer: null,
+      selectedPlace: null,
+      travelMode: 'driving',
+      savedPlaces: JSON.parse(localStorage.getItem('apex_saved_places')) || [],
+      recentSearches: JSON.parse(localStorage.getItem('apex_recent_searches')) || []
+    };
+
+    // Xarita Qatlamlari
+    const TILE_LAYERS = {
+      street: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap contributors'
+      }),
+      satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 18,
+        attribution: 'Tiles &copy; Esri'
+      }),
+      topo: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+        maxZoom: 17,
+        attribution: 'Map data: &copy; OpenStreetMap'
+      })
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initMap();
+      initEventListeners();
+      renderSavedPlaces();
+      renderRecentSearches();
+    });
+
+    // 1. Xaritani Boshlash (Toshkent markazi bilan)
+    function initMap() {
+      state.map = L.map('map', { zoomControl: false }).setView([41.2995, 69.2401], 12);
+      state.activeLayer = TILE_LAYERS.street;
+      state.activeLayer.addTo(state.map);
+    }
+
+    // 2. Hodisalarni ulash
+    function initEventListeners() {
+      document.getElementById('zoom-in-btn').addEventListener('click', () => state.map.zoomIn());
+      document.getElementById('zoom-out-btn').addEventListener('click', () => state.map.zoomOut());
+      document.getElementById('locate-btn').addEventListener('click', getUserLocation);
+      
+      const layerSelector = document.getElementById('layer-selector');
+      document.getElementById('layer-toggle-btn').addEventListener('click', () => {
+        layerSelector.classList.toggle('hidden');
+      });
+
+      document.querySelectorAll('input[name="map-layer"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+          state.map.removeLayer(state.activeLayer);
+          state.activeLayer = TILE_LAYERS[e.target.value];
+          state.activeLayer.addTo(state.map);
+          layerSelector.classList.add('hidden');
+        });
+      });
+
+      document.getElementById('theme-toggle-btn').addEventListener('click', () => {
+        document.body.classList.toggle('dark-theme');
+        const isDark = document.body.classList.contains('dark-theme');
+        document.getElementById('theme-toggle-btn').innerHTML = isDark 
+          ? '<i class="fa-solid fa-sun"></i>' 
+          : '<i class="fa-solid fa-moon"></i>';
+      });
+
+      document.getElementById('fullscreen-btn').addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen();
+        } else {
+          document.exitFullscreen();
+        }
+      });
+
+      // Mobil menyu
+      const sidebar = document.getElementById('sidebar');
+      document.getElementById('toggle-sidebar-btn').addEventListener('click', () => {
+        sidebar.classList.toggle('open');
+      });
+
+      // Tab almashtirish
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+          
+          const targetTab = e.currentTarget.dataset.tab;
+          e.currentTarget.classList.add('active');
+          document.getElementById(`tab-${targetTab}`).classList.add('active');
+        });
+      });
+
+      // Qidiruv
+      const searchInput = document.getElementById('search-input');
+      const clearSearchBtn = document.getElementById('clear-search-btn');
+      let debounceTimer;
+
+      searchInput.addEventListener('input', (e) => {
+        const query = e.target.value.trim();
+        if (query.length > 0) {
+          clearSearchBtn.classList.remove('hidden');
+          clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => fetchSearchSuggestions(query), 350);
+        } else {
+          clearSearchBtn.classList.add('hidden');
+          document.getElementById('suggestions-list').classList.add('hidden');
+        }
+      });
+
+      clearSearchBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        clearSearchBtn.classList.add('hidden');
+        document.getElementById('suggestions-list').classList.add('hidden');
+      });
+
+      // Kategoriya tugmalari
+      document.querySelectorAll('.category-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          searchNearbyCategory(e.currentTarget.dataset.category);
+        });
+      });
+
+      // Detallar paneli
+      document.getElementById('close-details-btn').addEventListener('click', closeDetailsPanel);
+      document.getElementById('details-save-btn').addEventListener('click', toggleSavePlace);
+      document.getElementById('details-share-btn').addEventListener('click', shareLocation);
+      document.getElementById('details-directions-btn').addEventListener('click', () => {
+        if (!state.selectedPlace) return;
+        document.getElementById('directions-tab-btn').click();
+        document.getElementById('dir-to-input').value = state.selectedPlace.name;
+        state.destinationCoords = state.selectedPlace.coords;
+        closeDetailsPanel();
+      });
+
+      // Routing tugmalari
+      document.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+          e.currentTarget.classList.add('active');
+          state.travelMode = e.currentTarget.dataset.mode;
+        });
+      });
+
+      document.getElementById('use-my-location-start').addEventListener('click', () => {
+        if (state.userLocation) {
+          document.getElementById('dir-from-input').value = 'Mening joylashuvim';
+          state.startCoords = state.userLocation;
+        } else {
+          getUserLocation(() => {
+            document.getElementById('dir-from-input').value = 'Mening joylashuvim';
+            state.startCoords = state.userLocation;
+          });
+        }
+      });
+
+      document.getElementById('get-directions-btn').addEventListener('click', calculateRoute);
+      document.getElementById('clear-route-btn').addEventListener('click', clearRoute);
+
+      document.getElementById('clear-recent-btn').addEventListener('click', () => {
+        state.recentSearches = [];
+        localStorage.setItem('apex_recent_searches', JSON.stringify([]));
+        renderRecentSearches();
+      });
+    }
+
+    // 3. Geolokatsiya (Foydalanuvchi joylashuvi)
+    function getUserLocation(callback) {
+      if (!navigator.geolocation) {
+        showToast("Brauzeringiz geolokatsiyani qo'llab-quvvatlamaydi.");
+        return;
+      }
+
+      showToast("Joylashuv aniqlanmoqda...");
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude, accuracy } = position.coords;
+          const latlng = [latitude, longitude];
+          state.userLocation = latlng;
+
+          state.map.flyTo(latlng, 15);
+
+          if (state.userMarker) {
+            state.userMarker.setLatLng(latlng);
+            state.userAccuracyCircle.setLatLng(latlng).setRadius(accuracy);
+          } else {
+            state.userMarker = L.marker(latlng, {
+              icon: L.divIcon({
+                className: 'user-location-marker',
+                html: '<div style="background:#2563eb;width:16px;height:16px;border-radius:50%;border:3px solid white;box-shadow:0 0 8px rgba(0,0,0,0.4);"></div>',
+                iconSize: [16, 16],
+                iconAnchor: [8, 8]
+              })
+            }).addTo(state.map);
+
+            state.userAccuracyCircle = L.circle(latlng, {
+              radius: accuracy,
+              color: '#2563eb',
+              fillColor: '#2563eb',
+              fillOpacity: 0.15
+            }).addTo(state.map);
+          }
+
+          showToast("Joylashuv aniqlandi.");
+          if (typeof callback === 'function') callback();
+        },
+        () => showToast("Joylashuvni aniqlab bo'lmadi."),
+        { enableHighAccuracy: true }
+      );
+    }
+
+    // 4. Nominatim API orqali Qidiruv
+    async function fetchSearchSuggestions(query) {
+      const dropdown = document.getElementById('suggestions-list');
+      try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`);
+        const results = await response.json();
+
+        dropdown.innerHTML = '';
+        if (results.length === 0) {
+          dropdown.classList.add('hidden');
+          return;
+        }
+
+        results.forEach(place => {
+          const li = document.createElement('li');
+          li.textContent = place.display_name;
+          li.addEventListener('click', () => {
+            selectLocation(place);
+            dropdown.classList.add('hidden');
+          });
+          dropdown.appendChild(li);
+        });
+
+        dropdown.classList.remove('hidden');
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function selectLocation(place) {
+      const lat = parseFloat(place.lat);
+      const lon = parseFloat(place.lon);
+      const coords = [lat, lon];
+
+      addRecentSearch(place.display_name, coords);
+      clearMarkers();
+
+      const marker = L.marker(coords).addTo(state.map);
+      state.searchMarkers.push(marker);
+
+      state.map.flyTo(coords, 14);
+
+      const placeData = {
+        id: place.place_id || Date.now(),
+        name: place.display_name.split(',')[0],
+        address: place.display_name,
+        category: place.type || 'Joy',
+        coords: coords
+      };
+
+      showDetailsPanel(placeData);
+    }
+
+    // 5. Kategoriyalar bo'yicha qidiruv
+    async function searchNearbyCategory(category) {
+      const spinner = document.getElementById('loading-spinner');
+      const resultsList = document.getElementById('search-results-list');
+
+      spinner.classList.remove('hidden');
+      resultsList.innerHTML = '';
+      clearMarkers();
+
+      try {
+        const bounds = state.map.getBounds();
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&amenity=${category}&bounded=1&viewbox=${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()},${bounds.getSouth()}&limit=10`);
+        const results = await response.json();
+
+        spinner.classList.add('hidden');
+        if (results.length === 0) {
+          resultsList.innerHTML = '<p style="font-size:0.85rem;color:var(--text-muted);">Yaqin atrofda hech narsa topilmadi.</p>';
+          return;
+        }
+
+        results.forEach(place => {
+          const coords = [parseFloat(place.lat), parseFloat(place.lon)];
+          const marker = L.marker(coords).addTo(state.map);
+          state.searchMarkers.push(marker);
+
+          const item = document.createElement('div');
+          item.className = 'card-item';
+          item.innerHTML = `
+            <div class="card-title">${place.display_name.split(',')[0]}</div>
+            <div class="card-subtitle">${category.toUpperCase()}</div>
+          `;
+
+          const placeData = {
+            id: place.place_id,
+            name: place.display_name.split(',')[0],
+            address: place.display_name,
+            category: category,
+            coords: coords
+          };
+
+          item.addEventListener('click', () => {
+            state.map.flyTo(coords, 15);
+            showDetailsPanel(placeData);
+          });
+
+          marker.on('click', () => showDetailsPanel(placeData));
+          resultsList.appendChild(item);
+        });
+      } catch (error) {
+        spinner.classList.add('hidden');
+        showToast("Ma'lumotlarni yuklashda xatolik.");
+      }
+    }
+
+    // 6. OSRM API orqali Yo'nalishlarni Hisoblash
+    async function calculateRoute() {
+      if (!state.startCoords || !state.destinationCoords) {
+        showToast("Iltimos, ikkala nuqtani ham belgilang.");
+        return;
+      }
+
+      const profileMap = { driving: 'driving', walking: 'walking', bicycling: 'bike' };
+      const mode = profileMap[state.travelMode] || 'driving';
+      const url = `https://router.project-osrm.org/route/v1/${mode}/${state.startCoords[1]},${state.startCoords[0]};${state.destinationCoords[1]},${state.destinationCoords[0]}?overview=full&geometries=geojson`;
+
+      showToast("Yo'nalish hisoblanmoqda...");
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (!data.routes || data.routes.length === 0) {
+          showToast("Yo'nalish topilmadi.");
+          return;
+        }
+
+        const route = data.routes[0];
+        const coordinates = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+
+        if (state.routeLayer) state.map.removeLayer(state.routeLayer);
+        state.routeLayer = L.polyline(coordinates, { color: '#2563eb', weight: 5, opacity: 0.8 }).addTo(state.map);
+
+        state.map.fitBounds(state.routeLayer.getBounds(), { padding: [40, 40] });
+
+        document.getElementById('route-distance').textContent = `${(route.distance / 1000).toFixed(1)} km`;
+        document.getElementById('route-duration').textContent = `${Math.round(route.duration / 60)} min`;
+        document.getElementById('route-summary').classList.remove('hidden');
+
+      } catch (err) {
+        showToast("Yo'nalishni olib bo'lmadi.");
+      }
+    }
+
+    function clearRoute() {
+      if (state.routeLayer) {
+        state.map.removeLayer(state.routeLayer);
+        state.routeLayer = null;
+      }
+      document.getElementById('route-summary').classList.add('hidden');
+      document.getElementById('dir-from-input').value = '';
+      document.getElementById('dir-to-input').value = '';
+      state.startCoords = null;
+      state.destinationCoords = null;
+    }
+
+    // 7. Joy Tafsilotlari va Saqlash (localStorage)
+    function showDetailsPanel(place) {
+      state.selectedPlace = place;
+      document.getElementById('details-title').textContent = place.name;
+      document.getElementById('details-category').textContent = place.category;
+      document.getElementById('details-address').textContent = place.address;
+      document.getElementById('details-coords').textContent = `${place.coords[0].toFixed(4)}, ${place.coords[1].toFixed(4)}`;
+
+      const saveBtn = document.getElementById('details-save-btn');
+      const isSaved = state.savedPlaces.some(p => p.id === place.id);
+      saveBtn.innerHTML = isSaved 
+        ? '<i class="fa-solid fa-bookmark"></i> Saqlangan' 
+        : '<i class="fa-regular fa-bookmark"></i> Saqlash';
+
+      document.getElementById('details-panel').classList.remove('hidden');
+    }
+
+    function closeDetailsPanel() {
+      document.getElementById('details-panel').classList.add('hidden');
+    }
+
+    function toggleSavePlace() {
+      if (!state.selectedPlace) return;
+
+      const existingIndex = state.savedPlaces.findIndex(p => p.id === state.selectedPlace.id);
+      if (existingIndex > -1) {
+        state.savedPlaces.splice(existingIndex, 1);
+        showToast("Saqlanganlardan o'chirildi.");
+      } else {
+        state.savedPlaces.push(state.selectedPlace);
+        showToast("Joy saqlandi!");
+      }
+
+      localStorage.setItem('apex_saved_places', JSON.stringify(state.savedPlaces));
+      renderSavedPlaces();
+      showDetailsPanel(state.selectedPlace);
+    }
+
+    function renderSavedPlaces() {
+      const container = document.getElementById('saved-places-list');
+      document.getElementById('saved-count').textContent = state.savedPlaces.length;
+
+      container.innerHTML = '';
+      if (state.savedPlaces.length === 0) {
+        container.innerHTML = '<p style="font-size:0.85rem;color:var(--text-muted);">Hozircha saqlangan joylar yo\'q.</p>';
+        return;
+      }
+
+      state.savedPlaces.forEach(place => {
+        const item = document.createElement('div');
+        item.className = 'card-item';
+        item.innerHTML = `
+          <div class="card-title">${place.name}</div>
+          <div class="card-subtitle">${place.category}</div>
+        `;
+        item.addEventListener('click', () => {
+          state.map.flyTo(place.coords, 15);
+          showDetailsPanel(place);
+        });
+        container.appendChild(item);
+      });
+    }
+
+    function addRecentSearch(name, coords) {
+      const searchItem = { name: name.split(',')[0], full: name, coords: coords };
+      state.recentSearches = state.recentSearches.filter(s => s.full !== name);
+      state.recentSearches.unshift(searchItem);
+      if (state.recentSearches.length > 5) state.recentSearches.pop();
+
+      localStorage.setItem('apex_recent_searches', JSON.stringify(state.recentSearches));
+      renderRecentSearches();
+    }
+
+    function renderRecentSearches() {
+      const container = document.getElementById('recent-searches-list');
+      container.innerHTML = '';
+
+      if (state.recentSearches.length === 0) {
+        document.getElementById('recent-searches-container').classList.add('hidden');
+        return;
+      }
+
+      document.getElementById('recent-searches-container').classList.remove('hidden');
+      state.recentSearches.forEach(item => {
+        const li = document.createElement('li');
+        li.className = 'card-item';
+        li.style.padding = '8px 12px';
+        li.innerHTML = `<i class="fa-solid fa-clock-rotate-left" style="margin-right:8px;color:var(--text-muted)"></i> ${item.name}`;
+        li.addEventListener('click', () => state.map.flyTo(item.coords, 14));
+        container.appendChild(li);
+      });
+    }
+
+    function clearMarkers() {
+      state.searchMarkers.forEach(m => state.map.removeLayer(m));
+      state.searchMarkers = [];
+    }
+
+    function shareLocation() {
+      if (!state.selectedPlace) return;
+      navigator.clipboard.writeText(`${state.selectedPlace.coords[0]}, ${state.selectedPlace.coords[1]}`);
+      showToast("Koordinatalar nusxalandi!");
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 3000);
+    }
+  </script>
+</body>
+</html>
